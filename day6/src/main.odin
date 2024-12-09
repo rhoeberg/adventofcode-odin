@@ -147,31 +147,38 @@ guard_walk_simulation :: proc(guard: Guard) {
 
 
 	last_step: f64 = 0
-	STEP_SPEED :: 0.00001
+	STEP_SPEED :: 0.000001
 	moving_guard := true
 
+	start_simulation := false
+
 	for !rl.WindowShouldClose() {
-		// length of rows
-		rows := i32(len(&tile_map))
-		columns := i32(len(&tile_map[0]))
-		if moving_guard && last_step + STEP_SPEED < rl.GetTime() {
-		// if rl.IsKeyPressed(rl.KeyboardKey.SPACE) {
-			last_step = rl.GetTime()
+
+		if rl.IsKeyPressed(rl.KeyboardKey.ENTER) do start_simulation = true
+		if start_simulation {
+
+			// length of rows
+			rows := i32(len(&tile_map))
+			columns := i32(len(&tile_map[0]))
+			if moving_guard && last_step + STEP_SPEED < rl.GetTime() {
+				// if rl.IsKeyPressed(rl.KeyboardKey.SPACE) {
+				last_step = rl.GetTime()
 
 
-			if next_tile(guard).x >= columns || next_tile(guard).x < 0 || next_tile(guard).y  >= rows || next_tile(guard).y < 0 {
-				// out of bounds
-				fmt.println("GUARD OUT OF BOUNDS")
-				moving_guard = false
-				fmt.println("tiles visited: ", get_amount_of_visited(&tile_map))
-			}
-			else if get_tile(&tile_map, next_tile(guard)).tile_empty {
-				// next tile is empty keep velocity and move guard
-				guard.pos = next_tile(guard)
-				get_tile(&tile_map, guard.pos).visited = true
-			}
-			else {
-				guard.vel_x, guard.vel_y = turn_guard_90(guard.vel_x, guard.vel_y)
+				if next_tile(guard).x >= columns || next_tile(guard).x < 0 || next_tile(guard).y  >= rows || next_tile(guard).y < 0 {
+					// out of bounds
+					fmt.println("GUARD OUT OF BOUNDS")
+					moving_guard = false
+					fmt.println("tiles visited: ", get_amount_of_visited(&tile_map))
+				}
+				else if get_tile(&tile_map, next_tile(guard)).tile_empty {
+					// next tile is empty keep velocity and move guard
+					guard.pos = next_tile(guard)
+					get_tile(&tile_map, guard.pos).visited = true
+				}
+				else {
+					guard.vel_x, guard.vel_y = turn_guard_90(guard.vel_x, guard.vel_y)
+				}
 			}
 		}
 
@@ -211,12 +218,17 @@ guard_walk_simulation :: proc(guard: Guard) {
 		guard_pos_y := (guard.pos.y * TILE_DRAWING_SIZE) + TILE_DRAWING_SIZE/2
 		rl.DrawCircle(guard_pos_x, guard_pos_y, TILE_DRAWING_SIZE / 2, rl.YELLOW)
 
+		// buffer: [128]u8
+		// fmt.bprintf(buffer[:], "FPS: %d", rl.GetFPS())
+		// text := strings.clone_to_cstring(string(buffer[:]), context.temp_allocator)
+		// rl.DrawText(text, 0, 0, 30, rl.GREEN)
+
 	}
 }
 
 main :: proc() {
 
-	rl.InitWindow(1200, 900, "christmas guard")
+	rl.InitWindow(900, 900, "adventofcode day 6")
 
 	input := read_input("input.txt")
 
@@ -271,8 +283,8 @@ main :: proc() {
 
 	fmt.println("GUARD START POS: ", guard.pos)
 	get_tile(&tile_map, guard.pos).visited = true
-	// guard_walk_simulation(guard)
+	guard_walk_simulation(guard)
 
-	amount_of_loops := test_all_manual_obstruction_positions(&tile_map, guard)
-	fmt.println("AMOUNT OF LOOPS: ", amount_of_loops)
+	// amount_of_loops := test_all_manual_obstruction_positions(&tile_map, guard)
+	// fmt.println("AMOUNT OF LOOPS: ", amount_of_loops)
 }
