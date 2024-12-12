@@ -323,6 +323,8 @@ main :: proc() {
 	input := read_input("input.txt")
 	// input := "2333133121414131402"
 
+	rl.InitWindow(1200, 900, "aoc day 9")
+
 	//////////////////
 	// PARSING
 	memory: [dynamic]Block
@@ -357,17 +359,92 @@ main :: proc() {
 
 	space_blocks: [dynamic]Space_Block_Position
 	get_all_space_blocks(&memory, &space_blocks)
+
+	sqrt := math.sqrt_f64(f64(len(memory)))
+	MAP_SIZE := int(sqrt)
+
+	n := 0
+	for !rl.WindowShouldClose() {
+
+		
+		// for {
+			file_index, file_size := get_n_file_from_end(&memory, n)
+			if file_size == 0 do break
+
+			file_moved := false
+			for space_block, i in space_blocks {
+				if !space_block.is_valid || space_block.size < file_size do continue
+				else if space_block.index >= file_index {
+					// fmt.println("SPACE BLOCK INDEX IS PASSED FILE INDEX", i)
+					break
+				} 
+				else {
+
+					size_dif :=  space_block.size - file_size
+					assert(size_dif >= 0, "SIZE_DIF IS NEGATIVE")
+					if size_dif == 0 {
+						space_blocks[i].is_valid = false
+					}
+					else {
+						
+						space_blocks[i].index = (space_blocks[i].index + space_block.size) - size_dif
+						space_blocks[i].size = size_dif
+					}
+
+					for j in 0..<file_size {
+						memory[space_block.index+j], memory[file_index+j] = memory[file_index+j], memory[space_block.index+j]
+					}
+
+					file_moved = true
+					break
+				}
+			}
+
+			if !file_moved {
+				n += 1
+			}
+		// }
+		
+		rl.BeginDrawing()
+		defer rl.EndDrawing()
+		rl.ClearBackground(rl.BLACK)
+
+		rl.DrawCircle(100, 100, 50, rl.YELLOW)
+		rl.DrawCircle(120, 120, 50, rl.BLACK)
+
+		i := 0
+		step : i32 = 3
+		for y in 0..<MAP_SIZE {
+			for x in 0..<MAP_SIZE {
+				if _, ok := memory[i].(File_Block); ok {
+					// rl.DrawRectangle(i32(x)*step, i32(y)*step, step, step, rl.BLUE)
+				}
+				else {
+					rl.DrawRectangle(i32(x)*step, i32(y)*step, step, step, rl.WHITE)
+				}
+				i += 1
+			}
+		}
+	}
 	
+	// print_memory(&memory)
+	// fmt.println()
+
+	checksum := calculate_checksum(&memory)
+	fmt.println("CHECKSUM = ", checksum)
+
+}
+
+defrag_keep_file_intact :: proc(memory: ^[dynamic]Block, space_blocks: ^[dynamic]Space_Block_Position) {
 	n := 0
 	for {
-		file_index, file_size := get_n_file_from_end(&memory, n)
+		file_index, file_size := get_n_file_from_end(memory, n)
 		if file_size == 0 do break
 
 		file_moved := false
 		for space_block, i in space_blocks {
 			if !space_block.is_valid || space_block.size < file_size do continue
 			else if space_block.index >= file_index {
-				// fmt.println("SPACE BLOCK INDEX IS PASSED FILE INDEX", i)
 				break
 			} 
 			else {
@@ -396,11 +473,4 @@ main :: proc() {
 			n += 1
 		}
 	}
-	
-	// print_memory(&memory)
-	// fmt.println()
-
-	checksum := calculate_checksum(&memory)
-	fmt.println("CHECKSUM = ", checksum)
-
 }
