@@ -101,6 +101,49 @@ get_trailhead_score_distinct :: proc(height_map: ^[dynamic][dynamic]int, pos: [2
 	return result
 }
 
+get_trailhead_paths :: proc(height_map: ^[dynamic][dynamic]int, paths: ^[dynamic][dynamic][2]int, current_path: [10][2]int, pos: [2]int, height_to_check: int) -> int {
+	if !map_pos_valid(height_map, pos, height_to_check) {
+		return 0
+	}
+	else if height_to_check == 9 {
+		fmt.println("APPENDING PATH TO PATHS:")
+		current_path := current_path
+		current_path[height_to_check] = pos
+
+		new_path: [dynamic][2]int
+		for point in current_path {
+			append(&new_path, point)
+		}
+
+		append(paths, new_path)
+
+		return 1
+	}
+
+	// fmt.println("HEIGHT TO CHECK:", height_to_check)
+	current_path := current_path
+	current_path[height_to_check] = pos
+
+	under := [2]int{pos[0] + 1, pos[1]}
+	over := [2]int{pos[0] - 1, pos[1]}
+	left := [2]int{pos[0], pos[1] - 1}
+	right := [2]int{pos[0], pos[1] + 1}
+
+	result := 0
+	result += get_trailhead_paths(height_map, paths, current_path, under, height_to_check + 1)
+
+	// check over
+	result += get_trailhead_paths(height_map, paths, current_path, over, height_to_check + 1)
+
+	// check left
+	result += get_trailhead_paths(height_map, paths, current_path, left, height_to_check + 1)
+
+	// check right
+	result += get_trailhead_paths(height_map, paths, current_path, right, height_to_check + 1)
+
+	return result
+}
+
 main :: proc() {
 	input := read_input("input.txt")
 
@@ -133,6 +176,8 @@ main :: proc() {
 	}
 
 
+	/////////////////
+	// PART 1
 	{
 		total_score := 0
 		current_peaks := make(map[[2]int]bool)
@@ -145,6 +190,8 @@ main :: proc() {
 		fmt.println("TOTAL SCORE PART 1: ", total_score)
 	}
 
+	/////////////////
+	// PART 2
 	{
 		total_score := 0
 		for trailhead in trailheads {
@@ -152,5 +199,111 @@ main :: proc() {
 		}
 
 		fmt.println("TOTAL SCORE PART 2: ", total_score)
+	}
+
+
+	/////////////////
+	// VISUALIZATION
+	{
+		paths: [dynamic][dynamic][2]int
+		current_path: [10][2]int
+		for trailhead in trailheads {
+			get_trailhead_paths(&height_map, &paths, current_path, trailhead, 0)
+		}
+
+		// fmt.println("PATHS")
+		// fmt.println(paths[0])
+
+		visualization(&height_map, &paths)
+	}
+}
+
+visualization :: proc(height_map: ^[dynamic][dynamic]int, paths: ^[dynamic][dynamic][2]int) {
+	rl.InitWindow(1200, 900, "Aoc day 10")
+
+    // Define our custom camera to look into our 3d world
+    camera: rl.Camera
+    camera.position = (rl.Vector3){ 18.0, 30.0, 18.0 }     // Camera position
+    camera.target = (rl.Vector3){ 0.0, 0.0, 0.0 }          // Camera looking at point
+    camera.up = (rl.Vector3){ 0.0, 1.0, 0.0 }              // Camera up vector (rotation towards target)
+    camera.fovy = 45.0                                    // Camera field-of-view Y
+    camera.projection = rl.CameraProjection.PERSPECTIVE                 // Camera projection type
+
+	rows := i32(len(height_map))
+	columns := i32(len(height_map[0]))
+	fmt.println("ROWS:", rows)
+	image := rl.GenImageColor(columns, rows, rl.BLACK)
+	for y in 0..<rows {
+		for x in 0..<columns {
+			height := height_map[y][x]
+			scaler : f32 = 1.0 / 9.0
+			step := f32(height) * scaler
+			pixel_color := rl.ColorLerp(rl.BLACK, rl.WHITE, step)
+			rl.ImageDrawPixel(&image, x, y, pixel_color)
+		}
+	}
+	height_map_mesh := rl.GenMeshHeightmap(image, {f32(rows), 2, f32(rows)})
+	model := rl.LoadModelFromMesh(height_map_mesh)
+	image_texture := rl.LoadTextureFromImage(image)
+	model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = image_texture;
+	// rl.ExportImage(image, "test.jpg")
+
+	for !rl.WindowShouldClose() {
+
+		rl.UpdateCamera(&camera, rl.CameraMode.FREE)
+
+		rl.BeginDrawing()
+		defer rl.EndDrawing()
+		rl.ClearBackground(rl.BLACK)
+
+		// rl.DrawTexture(image_texture, 0, 0, rl.WHITE)
+
+
+		rl.BeginMode3D(camera)
+
+        rl.DrawGrid(20, 1.0);
+
+		x_offset : f32 = -25
+		y_offset : f32 = -25
+		// rl.DrawModel(model, {x_offset, 0, y_offset}, 1, rl.GREEN)
+
+		for y in 0..<len(height_map) {
+			for x in 0..<len(height_map[0]) {
+				pos_x := f32(x) + x_offset
+				pos_y := f32(y) + y_offset
+				scaler : f32 = 1.0 / 9.0
+				height := f32(height_map[y][x])
+				rl.DrawCube({pos_x, height, pos_y}, 1, 1, 1, rl.GREEN)
+			}
+		}
+
+		SCALE :: 1
+		for path in paths {
+			last_point: [2]int
+			for point, i in path {
+				if i == 0 {
+					last_point = point
+					continue
+				}
+				x := point[1]
+				y := point[0]
+				last_x := last_point[1]
+				last_y := last_point[0]
+				scaler : f32 = 1.0 / 9.0
+				height := f32(height_map[y][x]) * scaler
+				last_height := f32(height_map[last_y][last_x]) * scaler
+				start_height := f32(height)*2 + 0.1
+				start_x := f32(x)*SCALE + x_offset
+				start_y := f32(y)*SCALE + y_offset
+				end_height := f32(last_height)*2 + 0.1
+				end_x := f32(last_x)*SCALE + x_offset
+				end_y := f32(last_y)*SCALE + y_offset
+				// rl.DrawLine3D({start_x, start_height, start_y}, {end_x, end_height, end_y}, rl.RED)
+				rl.DrawCylinderEx({start_x, start_height, start_y}, {end_x, end_height, end_y}, 0.04, 0.04, 10, rl.RED)
+				last_point = point
+			}
+		}
+
+		rl.EndMode3D()
 	}
 }
