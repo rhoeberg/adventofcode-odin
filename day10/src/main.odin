@@ -223,7 +223,7 @@ visualization :: proc(height_map: ^[dynamic][dynamic]int, paths: ^[dynamic][dyna
 
     // Define our custom camera to look into our 3d world
     camera: rl.Camera
-    camera.position = (rl.Vector3){ 18.0, 30.0, 18.0 }     // Camera position
+    camera.position = (rl.Vector3){ 25.0, 30.0, 25.0 }     // Camera position
     camera.target = (rl.Vector3){ 0.0, 0.0, 0.0 }          // Camera looking at point
     camera.up = (rl.Vector3){ 0.0, 1.0, 0.0 }              // Camera up vector (rotation towards target)
     camera.fovy = 45.0                                    // Camera field-of-view Y
@@ -242,15 +242,18 @@ visualization :: proc(height_map: ^[dynamic][dynamic]int, paths: ^[dynamic][dyna
 			rl.ImageDrawPixel(&image, x, y, pixel_color)
 		}
 	}
-	height_map_mesh := rl.GenMeshHeightmap(image, {f32(rows), 2, f32(rows)})
+	MAP_HEIGHT :: 3
+	height_map_mesh := rl.GenMeshHeightmap(image, {f32(rows), MAP_HEIGHT, f32(rows)})
 	model := rl.LoadModelFromMesh(height_map_mesh)
 	image_texture := rl.LoadTextureFromImage(image)
 	model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = image_texture;
+	
 	// rl.ExportImage(image, "test.jpg")
 
 	for !rl.WindowShouldClose() {
 
-		rl.UpdateCamera(&camera, rl.CameraMode.FREE)
+		// rl.UpdateCamera(&camera, rl.CameraMode.FREE)
+		rl.UpdateCamera(&camera, rl.CameraMode.ORBITAL)
 
 		rl.BeginDrawing()
 		defer rl.EndDrawing()
@@ -265,17 +268,18 @@ visualization :: proc(height_map: ^[dynamic][dynamic]int, paths: ^[dynamic][dyna
 
 		x_offset : f32 = -25
 		y_offset : f32 = -25
-		// rl.DrawModel(model, {x_offset, 0, y_offset}, 1, rl.GREEN)
+		rl.DrawModel(model, {x_offset, 0, y_offset}, 1, rl.GREEN)
+		rl.DrawModelWires(model, {x_offset, 0, y_offset}, 1, rl.BLUE)
 
-		for y in 0..<len(height_map) {
-			for x in 0..<len(height_map[0]) {
-				pos_x := f32(x) + x_offset
-				pos_y := f32(y) + y_offset
-				scaler : f32 = 1.0 / 9.0
-				height := f32(height_map[y][x])
-				rl.DrawCube({pos_x, height, pos_y}, 1, 1, 1, rl.GREEN)
-			}
-		}
+		// for y in 0..<len(height_map) {
+		// 	for x in 0..<len(height_map[0]) {
+		// 		pos_x := f32(x) + x_offset
+		// 		pos_y := f32(y) + y_offset
+		// 		scaler : f32 = 1.0 / 9.0
+		// 		height := f32(height_map[y][x])
+		// 		rl.DrawCube({pos_x, height, pos_y}, 1, 1, 1, rl.GREEN)
+		// 	}
+		// }
 
 		SCALE :: 1
 		for path in paths {
@@ -292,12 +296,12 @@ visualization :: proc(height_map: ^[dynamic][dynamic]int, paths: ^[dynamic][dyna
 				scaler : f32 = 1.0 / 9.0
 				height := f32(height_map[y][x]) * scaler
 				last_height := f32(height_map[last_y][last_x]) * scaler
-				start_height := f32(height)*2 + 0.1
-				start_x := f32(x)*SCALE + x_offset
-				start_y := f32(y)*SCALE + y_offset
-				end_height := f32(last_height)*2 + 0.1
-				end_x := f32(last_x)*SCALE + x_offset
-				end_y := f32(last_y)*SCALE + y_offset
+				start_height := f32(height) * MAP_HEIGHT + 0.1
+				start_x := (f32(x)+0.5) * SCALE + x_offset
+				start_y := (f32(y)+0.5) * SCALE + y_offset
+				end_height := f32(last_height) * MAP_HEIGHT + 0.1
+				end_x := (f32(last_x)+0.5) * SCALE + x_offset
+				end_y := (f32(last_y)+0.5) * SCALE + y_offset
 				// rl.DrawLine3D({start_x, start_height, start_y}, {end_x, end_height, end_y}, rl.RED)
 				rl.DrawCylinderEx({start_x, start_height, start_y}, {end_x, end_height, end_y}, 0.04, 0.04, 10, rl.RED)
 				last_point = point

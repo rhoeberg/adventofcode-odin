@@ -72,7 +72,96 @@ main :: proc() {
 	}
 
 	calculate_part1(&garden_plots)
-	calculate_part2(&garden_plots)
+	regions := calculate_part2(&garden_plots)
+
+
+	////////////////////
+	// VISUALIZATION
+	colors := []rl.Color{rl.YELLOW, rl.RED, rl.BROWN, rl.GREEN, rl.PURPLE, rl.WHITE, rl.MAGENTA, rl.ORANGE}
+	ANIMATION_SPEED :: 0.005
+	PLOT_SIZE :: 6
+	WAIT_TIME :: 2
+	rl.InitWindow(1000, 1000, "AoC day 12")
+	for !rl.WindowShouldClose() {
+		// for region in regions {
+			// region.fences
+		// }
+		rl.BeginDrawing()
+		defer rl.EndDrawing()
+
+		for y in 0..<len(garden_plots) {
+			for x in 0..<len(garden_plots[y]) {
+				plot_x := i32(x)*PLOT_SIZE
+				plot_y := i32(y)*PLOT_SIZE
+				rl.DrawRectangle(plot_x, plot_y, PLOT_SIZE, PLOT_SIZE, rl.BLUE)
+				rl.DrawRectangleLines(plot_x, plot_y, PLOT_SIZE, PLOT_SIZE, rl.BLACK)
+			}
+		}
+
+		step := int((rl.GetTime() - WAIT_TIME) / ANIMATION_SPEED)
+		for i in 0..<min(step, len(regions)-1) {
+			region := regions[i]
+			color := colors[i%len(colors)]
+			for pos, fence in region.fences {
+				plot_x := i32(pos.x)*PLOT_SIZE
+				plot_y := i32(pos.y)*PLOT_SIZE
+				rl.DrawRectangle(plot_x, plot_y, PLOT_SIZE, PLOT_SIZE, color)
+			}
+		}
+
+		if step >= len(regions)-1 {
+			fence_step := int((rl.GetTime() - WAIT_TIME) / ANIMATION_SPEED) - len(regions)-1
+
+			for i in 0..<min(fence_step, len(regions) - 1) {
+				region := regions[i]
+				color := colors[(i+1)%len(colors)]
+				for side in region.sides {
+
+					side_start: rl.Vector2
+					side_end: rl.Vector2
+
+					switch side.direction {
+					case .Up:
+						side_start_x := f32(side.start.x) * PLOT_SIZE
+						side_start_y := f32(side.start.y) * PLOT_SIZE
+						side_end_x := f32(side.end.x) * PLOT_SIZE + PLOT_SIZE
+						side_end_y := f32(side.end.y) * PLOT_SIZE
+
+						side_start = rl.Vector2{side_start_x, side_start_y}
+						side_end = rl.Vector2{side_end_x, side_end_y}
+					case .Down:
+						side_start_x := f32(side.start.x) * PLOT_SIZE
+						side_start_y := f32(side.start.y) * PLOT_SIZE + PLOT_SIZE
+						side_end_x := f32(side.end.x) * PLOT_SIZE + PLOT_SIZE
+						side_end_y := f32(side.end.y) * PLOT_SIZE + PLOT_SIZE
+
+						side_start = rl.Vector2{side_start_x, side_start_y}
+						side_end = rl.Vector2{side_end_x, side_end_y}
+					case .Left:
+						side_start_x := f32(side.start.x) * PLOT_SIZE
+						side_start_y := f32(side.start.y) * PLOT_SIZE
+						side_end_x := f32(side.end.x) * PLOT_SIZE
+						side_end_y := f32(side.end.y) * PLOT_SIZE + PLOT_SIZE
+
+						side_start = rl.Vector2{side_start_x, side_start_y}
+						side_end = rl.Vector2{side_end_x, side_end_y}
+					case .Right:
+						side_start_x := f32(side.start.x) * PLOT_SIZE + PLOT_SIZE
+						side_start_y := f32(side.start.y) * PLOT_SIZE
+						side_end_x := f32(side.end.x) * PLOT_SIZE + PLOT_SIZE
+						side_end_y := f32(side.end.y) * PLOT_SIZE + PLOT_SIZE
+
+						side_start = rl.Vector2{side_start_x, side_start_y}
+						side_end = rl.Vector2{side_end_x, side_end_y}
+					}
+					// rl.DrawLine(side_start_x, side_start_y, side_end_x, side_end_y, rl.BLACK) 
+
+					rl.DrawLineEx(side_start, side_end, 2, rl.BLACK)
+				}
+			}
+
+		}
+	}
 }
 
 Stack_Entry :: struct {
@@ -187,7 +276,8 @@ Region :: struct {
 	fences: map[Vec2]Plot_Fences,
 	sides: [dynamic]Side,
 }
-calculate_part2 :: proc(garden_plots: ^[dynamic][dynamic]rune) {
+
+calculate_part2 :: proc(garden_plots: ^[dynamic][dynamic]rune) -> [dynamic]Region {
 	used_plots := make(map[Vec2]struct{})
 	stack: [dynamic]Stack_Entry
 	regions: [dynamic]Region
@@ -290,6 +380,8 @@ calculate_part2 :: proc(garden_plots: ^[dynamic][dynamic]rune) {
 	}
 
 	fmt.println("part 2 = ", result)
+
+	return regions
 }
 
 side_exists :: proc(sides: ^[dynamic]Side, pos: Vec2, direction: Fence_Direction) -> bool {
